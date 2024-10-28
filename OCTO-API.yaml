@@ -9055,6 +9055,13 @@
         -
           "schema":
             "type": "string"
+          "name": "uuid"
+          "in": "path"
+          "required": true
+          "description": "The UUID of the booking"
+        -
+          "schema":
+            "type": "string"
             "enum":
               - "application/json"
           "in": "header"
@@ -19644,7 +19651,6 @@
                     - "en"
                   "country": "GB"
       "description": ""
-      security:
 externalDocs:
   url: https://docs.octo.travel/
   description: OCTO Developer Hub

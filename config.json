@@ -1,0 +1,11 @@
+{
+    "modelPackage": "io.bokun.octo",
+    "apiPackage": "io.bokun.octo",
+    "invokerPackage": "ignored",
+    "hideGenerationTimestamp": true,
+    "java8": true,
+    "generateModelBuilders": false,
+    "validateSpec": true,
+    "documentationProvider": "none",
+    "annotationLibrary": "none"
+}
