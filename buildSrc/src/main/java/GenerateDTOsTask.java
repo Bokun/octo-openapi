@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -144,6 +145,23 @@ public class GenerateDTOsTask {
             propName = schemaName + capitalize(propName);
         }
 
+        if (type.equals("string") && prop.containsKey("format")) {
+            return switch((String) prop.get("format")) {
+                case "uri" -> new Type("URL").required(isRequired.test(propName));
+                case "email" -> new Type("String").required(isRequired.test(propName));
+                case "date-time" -> new Type("LocalDateTime").required(isRequired.test(propName));
+                case "date" -> new Type("LocalDate").required(isRequired.test(propName));
+                case "uuid" -> new Type("UUID").required(isRequired.test(propName));
+                default -> throw new RuntimeException("Format detected: " + prop.get("format"));
+            };
+        }
+
+        String[] localDateTimeFields = {"utcUpdatedAt", "utcExpiresAt", "utcRedeemedAt", "utcConfirmedAt"};
+
+        if (type.equals("string") && Arrays.asList(localDateTimeFields).contains(propName)) {
+            return new Type("LocalDateTime").required(isRequired.test(propName));
+        }
+
         return switch (type) {
             case "string" -> new Type("String").required(isRequired.test(propName));
             case "boolean" -> new Type("Boolean").required(isRequired.test(propName));
@@ -273,7 +291,7 @@ public class GenerateDTOsTask {
             processObject(item, makeObjectName(itemName, typeAsSingular));
         }
 
-        return getType(type, item, makeObjectName(itemName, typeAsSingular), schemaName, typeAsSingular, isRequired);
+        return getType(type, item, itemName, schemaName, typeAsSingular, isRequired);
     }
 
     /**
@@ -307,7 +325,11 @@ public class GenerateDTOsTask {
         var format = """
                 package io.bokun.octo;
                 
+                import java.net.URL;
+                import java.time.LocalDate;
+                import java.time.LocalDateTime;
                 import java.util.ArrayList;
+                import java.util.UUID;
                 import javax.annotation.Nonnull;
                 
                 /**
