@@ -50,7 +50,7 @@ ext {
     repositoryBranch = System.getenv().getOrDefault("CIRCLE_BRANCH","repositoryBranch")
 }
 
-ext.sharedManifest = manifest {
+ext.sharedManifest = java.manifest {
     attributes(
             "Implementation-Title": project.name,
             "Implementation-Version": project.version,
@@ -84,21 +84,21 @@ sourceSets {
 
 jar {
     dependsOn compileJava
-    manifest = project.manifest {
+    manifest = java.manifest {
         from sharedManifest
     }
 }
 
 sourcesJar {
     dependsOn compileJava
-    manifest = project.manifest {
+    manifest = java.manifest {
         from sharedManifest
     }
 }
 
 javadocJar {
     dependsOn compileJava
-    manifest = project.manifest {
+    manifest = java.manifest {
         from sharedManifest
     }
 }
