@@ -8,6 +8,7 @@ buildscript {
     dependencies {
         classpath("com.amazonaws:aws-java-sdk-core:${awsVersion}")
         classpath("com.amazonaws:aws-java-sdk-s3:${awsVersion}")
+        classpath("org.yaml:snakeyaml:2.3")
     }
 }
 
@@ -16,7 +17,16 @@ plugins {
     id 'java'
     id 'java-library'
     id 'maven-publish'
-    id 'org.openapi.generator' version "${openApiVersion}"
+}
+
+tasks.register('generateDTOs') {
+    dependsOn tasks.clean
+    doLast {
+        io.bokun.octo.gradle.GenerateDTOsTask.generateDTOs(
+                project.projectDir.toString() + "/OCTO-API.yaml",
+                buildDir.toString()
+        );
+    }
 }
 
 repositories {
@@ -26,11 +36,9 @@ repositories {
 }
 
 dependencies {
-    implementation "org.openapitools:openapi-generator-cli:${openApiVersion}"
-
 //    testImplementation(platform('org.junit:junit-bom:5.9.2'))
 //    testImplementation('org.junit.jupiter:junit-jupiter')
-    testImplementation "junit:junit:4.13"
+    testImplementation 'junit:junit:4.13.1'
     testImplementation "org.openapitools:jackson-databind-nullable:0.2.6"
 }
 
@@ -52,63 +60,14 @@ ext.sharedManifest = manifest {
     )
 }
 
-openApiGenerate {
-    generatorName = "java"
-    inputSpec = "$rootDir/OCTO-API.yaml".toString()
-    outputDir = "$buildDir/openApiGenerated".toString()
-    configFile = "config.json"
-    configOptions = [
-            dateLibrary: "java8",
-            library: "microprofile"
-    ]
-    globalProperties = [
-            apis: "false",
-            models: ""
-    ]
-    packageName = "io.bokun.octo"
-//    skipValidateSpec = true
-}
-
-//task generateAndStripDeps {
-//    dependsOn tasks.clean
-//    dependsOn tasks.openApiGenerate
-//    doLast {
-//        def dir = new File(project.projectDir.toString() + "/build/openApiGenerated/src/main/java/io/bokun/octo/")
-//        if (dir.exists()) {
-//            dir.eachFileRecurse() { file ->
-//                String contents = file.getText('UTF-8')
-//                String[] linesToDrop = new String[]{"JsonAdapter", "import com.fasterxml.jackson", "@JsonValue", "@JsonCreator", "@JsonProperty", "@Schema", "import io.swagger.v3", "import javax.json", "@JsonbProperty", "org.openapitools", "JsonNullable"}
-//                Scanner scanner = new Scanner(contents)
-//                StringBuilder output = new StringBuilder()
-//                while (scanner.hasNextLine()) {
-//                    String line = scanner.nextLine()
-//                    boolean drop = false
-//                    for (String dropPattern : linesToDrop) {
-//                        if (line.contains(dropPattern)) {
-//                            drop = true
-//                            break
-//                        }
-//                    }
-//                    if (!drop) {
-//                        output.append(line).append("\n")
-//                    }
-//                }
-//                scanner.close()
-//                file.write(output.toString(), 'UTF-8')
-//            }
-//        }
-//    }
-//}
-
 compileJava {
     options.encoding = 'UTF-8'
-    dependsOn tasks.openApiGenerate
-    // dependsOn generateAndStripDeps
+    dependsOn tasks.generateDTOs
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withJavadocJar()
     withSourcesJar()
 }
@@ -116,12 +75,7 @@ java {
 sourceSets {
     main {
         java {
-            srcDir "$buildDir/openApiGenerated".toString() + "/src/main/java"
-        }
-    }
-    test {
-        java {
-            srcDir "$buildDir/openApiGenerated".toString() +"/src/test/java"
+            srcDir "$buildDir/generatedDTOs".toString() + "/src/main/java"
         }
     }
 }
@@ -147,33 +101,33 @@ javadocJar {
     }
 }
 
-AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
-
-// build.dependsOn tasks.generateAndStripDeps
-
-if (awsCredentials != null) {
-    println("publish : " + awsCredentials.AWSAccessKeyId)
-    publishing {
-        println "Will publish to Bokun private S3 repository"
-        publications {
-            restV2(MavenPublication) {
-                from components.java
-            }
-        }
-        repositories {
-            maven {
-                if (project.version.endsWith('-SNAPSHOT')) {
-                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots
-                } else {
-                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release
-                }
-                credentials(AwsCredentials) {
-                    accessKey awsCredentials.AWSAccessKeyId
-                    secretKey awsCredentials.AWSSecretKey
-                }
-            }
-        }
-    }
-} else {
-    println "AWS Credentials not found."
-}
+//AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
+//
+//build.dependsOn tasks.generateAndStripDeps
+//
+//if (awsCredentials != null) {
+//    println("publish : " + awsCredentials.AWSAccessKeyId)
+//    publishing {
+//        println "Will publish to Bokun private S3 repository"
+//        publications {
+//            restV2(MavenPublication) {
+//                from components.java
+//            }
+//        }
+//        repositories {
+//            maven {
+//                if (project.version.endsWith('-SNAPSHOT')) {
+//                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots
+//                } else {
+//                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release
+//                }
+//                credentials(AwsCredentials) {
+//                    accessKey awsCredentials.AWSAccessKeyId
+//                    secretKey awsCredentials.AWSSecretKey
+//                }
+//            }
+//        }
+//    }
+//} else {
+//    println "AWS Credentials not found."
+//}
