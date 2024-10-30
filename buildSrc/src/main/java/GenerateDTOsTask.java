@@ -106,10 +106,10 @@ public class GenerateDTOsTask {
         }
 
         return switch (type) {
-            case "string" -> new Type("String");
-            case "boolean" -> new Type("Boolean");
-            case "integer" -> new Type("Integer");
-            case "object" -> new Type(makeObjectName(propName, typeAsSingular));
+            case "string" -> new Type("String").required(isRequired.test(propName));
+            case "boolean" -> new Type("Boolean").required(isRequired.test(propName));
+            case "integer" -> new Type("Integer").required(isRequired.test(propName));
+            case "object" -> new Type(makeObjectName(propName, typeAsSingular)).required(isRequired.test(propName));
             default ->
                     throw new RuntimeException("getType: " + propName + ": Unknown type: " + type + " " + prop.toString());
         };
