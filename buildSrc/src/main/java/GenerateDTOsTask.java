@@ -13,9 +13,16 @@ import java.util.function.Predicate;
 
 import org.yaml.snakeyaml.Yaml;
 
+/**
+ * Generates DTOs & enums for the java compiler to compile them
+ */
 public class GenerateDTOsTask {
     private final String filename;
     private final String buildDir;
+
+    /**
+     * Key: name of the enum, value: list of all enum items
+     */
     private final Map<String,ArrayList<String>> enums = new HashMap<>();
 
     public GenerateDTOsTask(String filename, String buildDir) {
@@ -23,11 +30,20 @@ public class GenerateDTOsTask {
         this.buildDir = buildDir;
     }
 
+    /**
+     * Entry point from Gradle build script
+     *
+     * @param filename the filename of the OpenAPI spec we're using
+     * @param buildDir the output directory
+     */
     public static void generateDTOs(String filename, String buildDir) {
         var instance = new GenerateDTOsTask(filename, buildDir);
         instance.generate();
     }
 
+    /**
+     * Type information from the OpenAPI spec, non-nullable is generated as @Nonnull, required is so far unused
+     */
     private static class Type {
         public String type;
         public Boolean nullable = false;
@@ -56,6 +72,14 @@ public class GenerateDTOsTask {
         }
     }
 
+    /**
+     * The same enum might be defined a few dozen places in the API spec, this function is
+     * called for each time it shows up. It registers the enum for an enum file to be generated
+     * from it later on.
+     *
+     * @param name Name of the enum
+     * @param options all items of the enum
+     */
     private void registerEnum(String name, ArrayList<String> options) {
         if (name == null || options == null) {
             return;
@@ -64,16 +88,26 @@ public class GenerateDTOsTask {
         enums.put(name, options);
     }
 
+    /**
+     * Triggers creation of a .java file for each registered enum
+     */
     private void createEnums() {
         for(var entry : enums.entrySet()) {
             createJavaEnum(entry.getKey(), entry.getValue());
         }
     }
 
+    /**
+     * Capitalizes the input string
+     */
     private String capitalize(String input) {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
 
+    /**
+     * returns a capitalized version of the input string & converts it to the singular form if applicable.
+     * Example: from an Array called "units", it would create "Unit", which can then be used to create ArrayList<Unit>
+     */
     private String makeObjectName(String input, Boolean typeAsSingular) {
         input = capitalize(input);
 
@@ -88,6 +122,10 @@ public class GenerateDTOsTask {
         return input;
     }
 
+    /**
+     * returns the correct Java type for the given OpenAPI spec type.
+     * If the input is an array, it returns an ArrayList of the type inside the array
+     */
     private Type getType(
             String type,
             Map<String, Object> prop,
@@ -101,6 +139,7 @@ public class GenerateDTOsTask {
             return processAndGetType(items, propName, schemaName, true, isRequired).wrap("ArrayList");
         }
 
+        // Restrictions show up twice and the corresponding classes are called UnitRestrictions and OptionRestrictions
         if (type.equals("object") && propName.equals("restrictions")) {
             propName = schemaName + capitalize(propName);
         }
@@ -115,6 +154,9 @@ public class GenerateDTOsTask {
         };
     }
 
+    /**
+     * Inspects the given object, how the type info is encoded in it, and passes it on to one of the three other versions of this function
+     */
     private Type processAndGetType(
             Map<String, Object> item,
             String itemName,
@@ -129,15 +171,31 @@ public class GenerateDTOsTask {
         var type = item.get("type");
 
         if (type instanceof String) {
-            return processAndGetType((String) type, item, itemName, schemaName, typeAsSingular, isRequired);
+            return processAndGetTypeSingleType((String) type, item, itemName, schemaName, typeAsSingular, isRequired);
         } else if (type instanceof ArrayList<?>) {
-            return processAndGetType((ArrayList<?>) type, item, itemName, schemaName, typeAsSingular, isRequired);
+            return processAndGetTypeArrayOfTypes((ArrayList<?>) type, item, itemName, schemaName, typeAsSingular, isRequired);
         }
 
         throw new RuntimeException("processAndGetType: " + itemName + ": Unknown type: " + (type != null ? type.getClass() : "null") + " " + item);
     }
 
-    private Type processAndGetTypeOneOf(Map<String, Object> item, String itemName, String schemaName, Boolean typeAsSingular, Predicate<String> isRequired) {
+    /**
+     * There are multiple ways of having "either X or Y" type definitions in the OCTO OpenAPI spec.
+     * This function handles the type, where it's:
+     * {
+     * "oneOf": [
+     * {"type": "null"},
+     * {... inline object definition ...}
+     * ]
+     * }
+     */
+    private Type processAndGetTypeOneOf(
+            Map<String, Object> item,
+            String itemName,
+            String schemaName,
+            Boolean typeAsSingular,
+            Predicate<String> isRequired
+    ) {
         Boolean nullable = false;
         Map<String, Object> foundChild = null;
 
@@ -161,7 +219,11 @@ public class GenerateDTOsTask {
         return processAndGetType(foundChild, itemName, schemaName, typeAsSingular, isRequired).nullable(nullable);
     }
 
-    private Type processAndGetType(
+    /**
+     * There are multiple ways of having "either X or Y" type definitions in the OCTO OpenAPI spec.
+     * This function handles the type, where it's ["null", "String"] or ["null", ... some Object name ... ]
+     */
+    private Type processAndGetTypeArrayOfTypes(
             ArrayList<?> type,
             Map<String, Object> item,
             String itemName,
@@ -188,10 +250,14 @@ public class GenerateDTOsTask {
             throw new RuntimeException("processAndGetType: Can't find suitable type for " + itemName);
         }
 
-        return processAndGetType(foundType, item, itemName, schemaName, typeAsSingular, isRequired).nullable(nullable);
+        return processAndGetTypeSingleType(foundType, item, itemName, schemaName, typeAsSingular, isRequired).nullable(nullable);
     }
 
-    private Type processAndGetType(
+    /**
+     * processes the entity (registers included objects & enums) and returns the resulting type
+     * (e.g. class name or enum name) for it to be used in the calling function.
+     */
+    private Type processAndGetTypeSingleType(
             String type,
             Map<String, Object> item,
             String itemName,
@@ -210,6 +276,9 @@ public class GenerateDTOsTask {
         return getType(type, item, makeObjectName(itemName, typeAsSingular), schemaName, typeAsSingular, isRequired);
     }
 
+    /**
+     * When the type of something is "object", we register it as a new schema. This is the method doing that.
+     */
     private void processObject(Map<String, Object> item, String name) {
         var properties = (Map<String, Object>) item.get("properties");
         var required = (ArrayList<String>) item.get("required");
@@ -225,12 +294,15 @@ public class GenerateDTOsTask {
             }
 
             params.add(processAndGetType(prop, propName, name, false, isRequired) + " " + propName);
-            javadocs.add("* @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
+            javadocs.add(" * @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
         }
 
         createJavaClass(item, name, javadocs, params);
     }
 
+    /**
+     * Creates a java class out of the schema & generated parameters and javadoc code
+     */
     private void createJavaClass(Map<String, Object> schema, String name, ArrayList<String> javadocs, ArrayList<String> params) {
         var format = """
                 package io.bokun.octo;
@@ -239,9 +311,9 @@ public class GenerateDTOsTask {
                 import javax.annotation.Nonnull;
                 
                 /**
-                * Octo DTO: %s.
+                 * Octo DTO: %s.
                 %s
-                */
+                 */
                 
                 public record %s (
                     %s
@@ -259,18 +331,21 @@ public class GenerateDTOsTask {
         ));
     }
 
+    /**
+     * Creates a java enum out of the name & list of items.
+     */
     private void createJavaEnum(String name, ArrayList<String> items) {
         var format = """
                 package io.bokun.octo;
                 
                 /**
-                * OCTO enum: %s
-                */
+                 * OCTO enum: %s
+                 */
                 public enum %s {
                     %s
                 }
                 """;
-        var itemFormat = "/**\n    * %s\n    */\n    %s";
+        var itemFormat = "/**\n     * %s\n     */\n    %s";
         createJavaFile(name, String.format(
                 format,
                 name,
@@ -279,6 +354,9 @@ public class GenerateDTOsTask {
         ));
     }
 
+    /**
+     * Saves a java class or object to disk
+     */
     private void createJavaFile(String name, String content) {
         var file = new File(buildDir + "/generatedDTOs/src/main/java/" + name + ".java");
         try {
@@ -289,6 +367,9 @@ public class GenerateDTOsTask {
         }
     }
 
+    /**
+     * Reads the YAML file and initializes the processing of its contents
+     */
     public void generate() {
         String octoFile = null;
         try {
