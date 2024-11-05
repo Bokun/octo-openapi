@@ -38,7 +38,7 @@ public class GenerateDTOsTask {
      * @param buildDir the output directory
      */
     public static void generateDTOs(String filename, String buildDir) {
-        var instance = new GenerateDTOsTask(filename, buildDir);
+        var instance = new io.bokun.octo.gradle.GenerateDTOsTask(filename, buildDir);
         instance.generate();
     }
 

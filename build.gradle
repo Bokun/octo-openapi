@@ -8,25 +8,12 @@ buildscript {
     dependencies {
         classpath("com.amazonaws:aws-java-sdk-core:${awsVersion}")
         classpath("com.amazonaws:aws-java-sdk-s3:${awsVersion}")
-        classpath("org.yaml:snakeyaml:2.3")
     }
 }
 
 plugins {
-    id 'base'
-    id 'java'
     id 'java-library'
     id 'maven-publish'
-}
-
-tasks.register('generateDTOs') {
-    dependsOn tasks.clean
-    doLast {
-        io.bokun.octo.gradle.GenerateDTOsTask.generateDTOs(
-                project.projectDir.toString() + "/OCTO-API.yaml",
-                buildDir.toString()
-        );
-    }
 }
 
 repositories {
@@ -36,12 +23,15 @@ repositories {
 }
 
 dependencies {
-//    testImplementation(platform('org.junit:junit-bom:5.9.2'))
-//    testImplementation('org.junit.jupiter:junit-jupiter')
     testImplementation 'junit:junit:4.13.1'
     testImplementation "org.openapitools:jackson-databind-nullable:0.2.6"
 
     compileOnly("com.google.code.findbugs:annotations:3.0.1")
+    compileOnly("org.yaml:snakeyaml:2.3")
+
+// TODO Use AWS Java SDK V2
+//    implementation(platform("software.amazon.awssdk:bom:${properties["awsVersion"]}"))
+//    implementation("software.amazon.awssdk:s3")
 }
 
 ext {
@@ -62,17 +52,37 @@ ext.sharedManifest = java.manifest {
     )
 }
 
+tasks.register('generateDTOs') {
+    dependsOn tasks.clean
+    doLast {
+        io.bokun.octo.gradle.GenerateDTOsTask.generateDTOs(
+                project.projectDir.toString() + "/OCTO-API.yaml",
+                project.layout.buildDirectory.get().asFile.path
+        );
+    }
+}
+
 compileJava {
     options.encoding = 'UTF-8'
     dependsOn tasks.generateDTOs
 }
 
+// Apply a specific Java toolchain to ease working on different environments.
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+        vendor = JvmVendorSpec.AMAZON
+    }
     withJavadocJar()
     withSourcesJar()
 }
+
+//java {
+//    sourceCompatibility = JavaVersion.VERSION_17
+//    targetCompatibility = JavaVersion.VERSION_17
+//    withJavadocJar()
+//    withSourcesJar()
+//}
 
 sourceSets {
     main {
@@ -80,6 +90,10 @@ sourceSets {
             srcDir "$buildDir/generatedDTOs".toString() + "/src/main/java"
         }
     }
+}
+
+compileJava {
+    dependsOn generateDTOs
 }
 
 jar {
@@ -103,33 +117,33 @@ javadocJar {
     }
 }
 
-//AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
-//
+AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance().credentials;
+
 //build.dependsOn tasks.generateAndStripDeps
-//
-//if (awsCredentials != null) {
-//    println("publish : " + awsCredentials.AWSAccessKeyId)
-//    publishing {
-//        println "Will publish to Bokun private S3 repository"
-//        publications {
-//            restV2(MavenPublication) {
-//                from components.java
-//            }
-//        }
-//        repositories {
-//            maven {
-//                if (project.version.endsWith('-SNAPSHOT')) {
-//                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots
-//                } else {
-//                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release
-//                }
-//                credentials(AwsCredentials) {
-//                    accessKey awsCredentials.AWSAccessKeyId
-//                    secretKey awsCredentials.AWSSecretKey
-//                }
-//            }
-//        }
-//    }
-//} else {
-//    println "AWS Credentials not found."
-//}
+
+if (awsCredentials != null) {
+    println("publish : " + awsCredentials.AWSAccessKeyId)
+    publishing {
+        println "Will publish to Bokun private S3 repository"
+        publications {
+            restV2(MavenPublication) {
+                from components.java
+            }
+        }
+        repositories {
+            maven {
+                if (project.version.endsWith('-SNAPSHOT')) {
+                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots  ???
+                } else {
+                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release  ???
+                }
+                credentials(AwsCredentials) {
+                    accessKey awsCredentials.AWSAccessKeyId
+                    secretKey awsCredentials.AWSSecretKey
+                }
+            }
+        }
+    }
+} else {
+    println "AWS Credentials not found."
+}
