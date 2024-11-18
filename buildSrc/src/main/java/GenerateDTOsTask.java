@@ -280,15 +280,20 @@ public class GenerateDTOsTask {
             Boolean typeAsSingular,
             Predicate<String> isRequired
     ) {
-        if (type.equals("string")) {
-            registerEnum((String) item.get("title"), (ArrayList<String>) item.get("enum"));
-        }
+        String itemOrEnumName = itemName;
 
         if (type.equals("object")) {
             processObject(item, makeObjectName(itemName, typeAsSingular));
         }
 
-        return getType(type, item, itemName, schemaName, typeAsSingular, isRequired);
+        String title = (String) item.get("title");
+        if (type.equals("string") && title != null) {
+            itemOrEnumName = title;
+            type = "object";
+            registerEnum(itemOrEnumName, (ArrayList<String>) item.get("enum"));
+        }
+
+        return getType(type, item, itemOrEnumName, schemaName, typeAsSingular, isRequired);
     }
 
     /**
