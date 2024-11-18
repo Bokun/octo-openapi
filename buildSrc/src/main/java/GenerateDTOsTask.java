@@ -6,10 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 
 import org.yaml.snakeyaml.Yaml;
@@ -214,7 +211,7 @@ public class GenerateDTOsTask {
             Boolean typeAsSingular,
             Predicate<String> isRequired
     ) {
-        Boolean nullable = false;
+        boolean nullable = false;
         Map<String, Object> foundChild = null;
 
         for (var child : (ArrayList<Map<String, Object>>) item.get("oneOf")) {
@@ -322,6 +319,9 @@ public class GenerateDTOsTask {
      * Creates a java class out of the schema & generated parameters and javadoc code
      */
     private void createJavaClass(Map<String, Object> schema, String name, ArrayList<String> javadocs, ArrayList<String> params) {
+        if (Objects.equals(name, "Restrictions")) {
+            return;
+        }
         var format = """
                 package io.bokun.octo;
                 
