@@ -50,7 +50,7 @@ jobs:
       - run:
           name: Print Gradle version
           command: |
-            ./gradlew version
+            ./gradlew help
       - store_artifacts:
           path: build/reports
           destination: reports
@@ -63,6 +63,7 @@ jobs:
 
 workflows:
   build-develop:
+    unless: << pipeline.parameters.run_print_version >>
     jobs:
       - build:
           context:
@@ -73,6 +74,7 @@ workflows:
               only:
                 - develop
   build-prod:
+    unless: << pipeline.parameters.run_print_version >>
     jobs:
       - build:
           context:
