@@ -62,7 +62,7 @@ jobs:
             - ~/.gradle
             -
 workflows:
-  version: 2
+  version: 2.1
   build-develop:
     jobs:
       - build:
