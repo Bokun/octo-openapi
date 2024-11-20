@@ -60,7 +60,7 @@ jobs:
           key: build-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "build.gradle" }}
           paths:
             - ~/.gradle
-            -
+
 workflows:
   build-develop:
     jobs:
