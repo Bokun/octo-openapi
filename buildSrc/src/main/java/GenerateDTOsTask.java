@@ -66,7 +66,7 @@ public class GenerateDTOsTask {
         }
 
         public String toString() {
-            return (nullable ? "" : "@Nonnull ") + type;
+            return (nullable || !required ? "" : "@Nonnull ") + type;
         }
     }
 
