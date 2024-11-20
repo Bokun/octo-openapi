@@ -83,7 +83,7 @@ workflows:
               only:
                 - main
                 - /^feature.*/
-  print-version:
+  build-version:
     when: << pipeline.parameters.run_print_version >>
     jobs:
       - print-version:
