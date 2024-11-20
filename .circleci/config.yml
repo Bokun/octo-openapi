@@ -48,6 +48,22 @@ jobs:
       - restore_cache:
           key: build-{{ .Environment.CIRCLE_PROJECT_REPONAME }}-{{ .Branch }}-{{ checksum "build.gradle" }}
       - run:
+          name: Git Fetch
+          command: |
+            git fetch
+      - run:
+          name: Git Pull
+          command: |
+            git pull
+      - run:
+          name: Git Commit
+          command: |
+            git commit
+      - run:
+          name: Git Push
+          command: |
+            git push
+      - run:
           name: Print Gradle version
           command: |
             ./gradlew help
