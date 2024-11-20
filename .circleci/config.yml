@@ -6,7 +6,7 @@ parameters:
     type: boolean
     default: false
 
-version: 2
+version: 2.1
 jobs:
   build:
     <<: *defaults
@@ -62,7 +62,6 @@ jobs:
             - ~/.gradle
             -
 workflows:
-  version: 2.1
   build-develop:
     jobs:
       - build:
