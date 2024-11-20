@@ -1,18 +1,15 @@
 package io.bokun.octo.gradle;
 
+import org.yaml.snakeyaml.Yaml;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
-
-import org.yaml.snakeyaml.Yaml;
 
 /**
  * Generates DTOs & enums for the java compiler to compile them
@@ -94,7 +91,7 @@ public class GenerateDTOsTask {
      */
     private void createEnums() {
         for(var entry : enums.entrySet()) {
-            createJavaEnum(entry.getKey(), entry.getValue());
+            createJavaEnum(entry.getKey(), entry.getValue(), null);
         }
     }
 
@@ -133,11 +130,12 @@ public class GenerateDTOsTask {
             String propName,
             String schemaName,
             Boolean typeAsSingular,
-            Predicate<String> isRequired
+            Predicate<String> isRequired,
+            String pathPrefix
     ) {
         if (type.equals("array")) {
             var items = (Map<String, Object>) prop.get("items");
-            return processAndGetType(items, propName, schemaName, true, isRequired).wrap("ArrayList");
+            return processAndGetType(items, propName, schemaName, true, isRequired, pathPrefix).wrap("ArrayList");
         }
 
         // Restrictions show up twice and the corresponding classes are called UnitRestrictions and OptionRestrictions
@@ -180,18 +178,19 @@ public class GenerateDTOsTask {
             String itemName,
             String schemaName,
             Boolean typeAsSingular,
-            Predicate<String> isRequired
+            Predicate<String> isRequired,
+            String pathPrefix
     ) {
         if (item.containsKey("oneOf")) {
-            return processAndGetTypeOneOf(item, itemName, schemaName, typeAsSingular, isRequired);
+            return processAndGetTypeOneOf(item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix);
         }
 
         var type = item.get("type");
 
         if (type instanceof String) {
-            return processAndGetTypeSingleType((String) type, item, itemName, schemaName, typeAsSingular, isRequired);
+            return processAndGetTypeSingleType((String) type, item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix);
         } else if (type instanceof ArrayList<?>) {
-            return processAndGetTypeArrayOfTypes((ArrayList<?>) type, item, itemName, schemaName, typeAsSingular, isRequired);
+            return processAndGetTypeArrayOfTypes((ArrayList<?>) type, item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix);
         }
 
         throw new RuntimeException("processAndGetType: " + itemName + ": Unknown type: " + (type != null ? type.getClass() : "null") + " " + item);
@@ -212,9 +211,10 @@ public class GenerateDTOsTask {
             String itemName,
             String schemaName,
             Boolean typeAsSingular,
-            Predicate<String> isRequired
+            Predicate<String> isRequired,
+            String pathPrefix
     ) {
-        Boolean nullable = false;
+        boolean nullable = false;
         Map<String, Object> foundChild = null;
 
         for (var child : (ArrayList<Map<String, Object>>) item.get("oneOf")) {
@@ -234,7 +234,7 @@ public class GenerateDTOsTask {
             throw new RuntimeException("processAndGetType: " + itemName + ": Unparseable oneOf: no child found");
         }
 
-        return processAndGetType(foundChild, itemName, schemaName, typeAsSingular, isRequired).nullable(nullable);
+        return processAndGetType(foundChild, itemName, schemaName, typeAsSingular, isRequired, pathPrefix).nullable(nullable);
     }
 
     /**
@@ -247,7 +247,8 @@ public class GenerateDTOsTask {
             String itemName,
             String schemaName,
             Boolean typeAsSingular,
-            Predicate<String> isRequired
+            Predicate<String> isRequired,
+            String pathPrefix
     ) {
         String foundType = null;
         Boolean nullable = false;
@@ -268,7 +269,7 @@ public class GenerateDTOsTask {
             throw new RuntimeException("processAndGetType: Can't find suitable type for " + itemName);
         }
 
-        return processAndGetTypeSingleType(foundType, item, itemName, schemaName, typeAsSingular, isRequired).nullable(nullable);
+        return processAndGetTypeSingleType(foundType, item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix).nullable(nullable);
     }
 
     /**
@@ -281,23 +282,29 @@ public class GenerateDTOsTask {
             String itemName,
             String schemaName,
             Boolean typeAsSingular,
-            Predicate<String> isRequired
+            Predicate<String> isRequired,
+            String pathPrefix
     ) {
-        if (type.equals("string")) {
-            registerEnum((String) item.get("title"), (ArrayList<String>) item.get("enum"));
-        }
+        String itemOrEnumName = itemName;
 
         if (type.equals("object")) {
-            processObject(item, makeObjectName(itemName, typeAsSingular));
+            processObject(item, makeObjectName(itemName, typeAsSingular), pathPrefix);
         }
 
-        return getType(type, item, itemName, schemaName, typeAsSingular, isRequired);
+        String title = (String) item.get("title");
+        if (type.equals("string") && title != null) {
+            itemOrEnumName = title;
+            type = "object";
+            registerEnum(itemOrEnumName, (ArrayList<String>) item.get("enum"));
+        }
+
+        return getType(type, item, itemOrEnumName, schemaName, typeAsSingular, isRequired, pathPrefix);
     }
 
     /**
      * When the type of something is "object", we register it as a new schema. This is the method doing that.
      */
-    private void processObject(Map<String, Object> item, String name) {
+    private void processObject(Map<String, Object> item, String name, String pathPrefix) {
         var properties = (Map<String, Object>) item.get("properties");
         var required = (ArrayList<String>) item.get("required");
         Predicate<String> isRequired = (String key) -> required == null ? false : required.contains(key);
@@ -311,19 +318,26 @@ public class GenerateDTOsTask {
                 propName = propName + name;
             }
 
-            params.add(processAndGetType(prop, propName, name, false, isRequired) + " " + propName);
+            params.add(processAndGetType(prop, propName, name, false, isRequired, null) + " " + propName);
             javadocs.add(" * @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
         }
 
-        createJavaClass(item, name, javadocs, params);
+        createJavaClass(item, name, javadocs, params, pathPrefix);
     }
 
     /**
      * Creates a java class out of the schema & generated parameters and javadoc code
      */
-    private void createJavaClass(Map<String, Object> schema, String name, ArrayList<String> javadocs, ArrayList<String> params) {
+    private void createJavaClass(Map<String, Object> schema,
+                                 String name,
+                                 ArrayList<String> javadocs,
+                                 ArrayList<String> params,
+                                 String pathPrefix) {
+        if (Objects.equals(name, "Restrictions")) {
+            return;
+        }
         var format = """
-                package io.bokun.octo;
+                package io.bokun.octo%s;
                 
                 import java.net.URL;
                 import java.time.LocalDate;
@@ -331,6 +345,7 @@ public class GenerateDTOsTask {
                 import java.util.ArrayList;
                 import java.util.UUID;
                 import javax.annotation.Nonnull;
+                %s
                 
                 /**
                  * Octo DTO: %s.
@@ -342,21 +357,26 @@ public class GenerateDTOsTask {
                 ) {}
                 """;
 
+        var pkg = pathPrefix == null ? "" : "." + pathPrefix;
+        var pkgImport = pathPrefix == null ? "" : "import io.bokun.octo.*;";
+
         createJavaFile(name, String.format(
                 format,
+                pkg,
+                pkgImport,
                 schema.containsKey("description") && !schema.get("description").equals("")
                         ? schema.get("description")
                         : name + " (auto-generated)",
                 String.join("\n", javadocs),
                 name,
                 String.join(",\n    ", params)
-        ));
+        ), pathPrefix);
     }
 
     /**
      * Creates a java enum out of the name & list of items.
      */
-    private void createJavaEnum(String name, ArrayList<String> items) {
+    private void createJavaEnum(String name, ArrayList<String> items, String pathPrefix) {
         var format = """
                 package io.bokun.octo;
                 
@@ -373,20 +393,51 @@ public class GenerateDTOsTask {
                 name,
                 name,
                 String.join( ",\n\n    ", items.stream().map((item) -> String.format(itemFormat, item, item)).toList())
-        ));
+        ), pathPrefix);
     }
 
     /**
      * Saves a java class or object to disk
      */
-    private void createJavaFile(String name, String content) {
-        var file = new File(buildDir + "/generatedDTOs/src/main/java/" + name + ".java");
+    private void createJavaFile(String name, String content, String pathPrefix) {
+        var folder = pathPrefix == null ? "" : pathPrefix + "/";
+        var file = new File(buildDir + "/generatedDTOs/src/main/java/" + folder + name + ".java");
         try {
             Files.createDirectories(Paths.get(file.getParent()));
             Files.write(Path.of(file.getPath()), content.getBytes());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Creates a DTO name from a request path name, e.g. GET /products/{id} -> RequestBodyGETProductsID
+     */
+    private String createDTONameFromPath(String path, String method) {
+        int i = 0;
+        boolean capitalize = true;
+        StringBuilder ret = new StringBuilder(capitalize(method));
+
+        while (i < path.length()) {
+
+            var current = path.charAt(i);
+            var toAppend = capitalize ? Character.toUpperCase(current) : current;
+            capitalize = false;
+            i++;
+
+            if (current == '/' || current == '{') {
+                capitalize = true;
+                continue;
+            }
+
+            if (current == '}') {
+                continue;
+            }
+
+            ret.append(toAppend);
+        }
+
+        return ret.toString();
     }
 
     /**
@@ -404,7 +455,24 @@ public class GenerateDTOsTask {
         var octoSchemas = (Map<String, Object>) ((Map<String, Object>) octoDefinition.get("components")).get("schemas");
         for (var name : octoSchemas.keySet()) {
             var schema = (Map<String, Object>) octoSchemas.get(name);
-            processAndGetType(schema, name, name, false, (String n) -> false);
+            processAndGetType(schema, name, name, false, (String n) -> false, null);
+        }
+
+        var octoPaths = (Map<String, Object>) octoDefinition.get("paths");
+        for (var path : octoPaths.keySet()) {
+            var requestMethods = (Map<String, Object>) octoPaths.get(path);
+            for (var method : requestMethods.keySet()) {
+                if (method.toLowerCase().equals("get") || method.toLowerCase().equals("parameters")) {
+                    continue;
+                }
+                var dtoName = createDTONameFromPath(path, method);
+                var methodObject = (Map<String, Object>) requestMethods.get(method);
+                var requestBody = (Map<String, Object>) methodObject.get("requestBody");
+                var content = (Map<String, Object>) requestBody.get("content");
+                var applicationJson = (Map<String, Object>) content.get("application/json");
+                var schema = (Map<String, Object>) applicationJson.get("schema");
+                processAndGetType(schema, dtoName, dtoName, false, (String n) -> false, "requestBody");
+            }
         }
 
         createEnums();
