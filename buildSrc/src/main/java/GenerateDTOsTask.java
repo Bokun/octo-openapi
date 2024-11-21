@@ -109,7 +109,8 @@ public class GenerateDTOsTask {
     private String makeObjectName(String input, Boolean typeAsSingular) {
         input = capitalize(input);
 
-        if (!typeAsSingular) {
+        // openingHours[] should be ArrayList<OpeningHours>, not ArrayList<OpeningHour>
+        if (!typeAsSingular || input.toLowerCase().equals("openinghours")) {
             return input;
         }
 
@@ -287,6 +288,11 @@ public class GenerateDTOsTask {
     ) {
         String itemOrEnumName = itemName;
 
+        // The availability inside a booking is an abbreviated version of the availability object
+        if (schemaName.equals("Booking") && itemName.equals("availability")) {
+            itemName = schemaName + capitalize(itemName);
+        }
+
         if (type.equals("object")) {
             processObject(item, makeObjectName(itemName, typeAsSingular), pathPrefix);
         }
@@ -333,6 +339,7 @@ public class GenerateDTOsTask {
                                  ArrayList<String> javadocs,
                                  ArrayList<String> params,
                                  String pathPrefix) {
+        // Restrictions is something we don't use, we use UnitRestrictions and OptionRestrictions
         if (Objects.equals(name, "Restrictions")) {
             return;
         }
