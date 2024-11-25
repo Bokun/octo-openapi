@@ -149,7 +149,7 @@ public class GenerateDTOsTask {
                 case "uri" -> new Type("URL").required(isRequired.test(propName));
                 case "email" -> new Type("String").required(isRequired.test(propName));
                 case "date-time" -> new Type("ZonedDateTime").required(isRequired.test(propName));
-                case "date" -> new Type("ZonedDate").required(isRequired.test(propName));
+                case "date" -> new Type("LocalDate").required(isRequired.test(propName));
                 case "uuid" -> new Type("UUID").required(isRequired.test(propName));
                 default -> throw new RuntimeException("Format detected: " + prop.get("format"));
             };
@@ -347,7 +347,7 @@ public class GenerateDTOsTask {
                 package io.bokun.octo%s;
                 
                 import java.net.URL;
-                import java.time.ZonedDate;
+                import java.time.LocalDate;
                 import java.time.ZonedDateTime;
                 import java.util.ArrayList;
                 import java.util.UUID;
