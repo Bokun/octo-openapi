@@ -286,11 +286,23 @@ public class GenerateDTOsTask {
             Predicate<String> isRequired,
             String pathPrefix
     ) {
-        String itemOrEnumName = itemName;
+        String objectName = makeObjectName(itemName, typeAsSingular);
 
         // The availability inside a booking is an abbreviated version of the availability object
-        if (schemaName.equals("Booking") && itemName.equals("availability")) {
+        if (objectName.equals("Availability") && schemaName.equals("Booking")) {
             itemName = schemaName + capitalize(itemName);
+        }
+
+        if (objectName.equals("Unit") && Set.of("PostAvailabilityCalendar", "PostAvailability").contains(schemaName)) {
+            itemName = "AvailabilityRequestUnit";
+        }
+
+        if (objectName.equals("UnitItem") && schemaName.equals("PostBookings")) {
+            itemName = "ReservationRequestUnitItem";
+        }
+
+        if (objectName.equals("UnitItem") && Set.of("PostBookingsUuidConfirm", "PatchBookingsUuid").contains(schemaName)) {
+            itemName = "BookingRequestUnitItem";
         }
 
         if (type.equals("object")) {
@@ -299,12 +311,12 @@ public class GenerateDTOsTask {
 
         String title = (String) item.get("title");
         if (type.equals("string") && title != null) {
-            itemOrEnumName = title;
+            itemName = title;
             type = "object";
-            registerEnum(itemOrEnumName, (ArrayList<String>) item.get("enum"));
+            registerEnum(itemName, (ArrayList<String>) item.get("enum"));
         }
 
-        return getType(type, item, itemOrEnumName, schemaName, typeAsSingular, isRequired, pathPrefix);
+        return getType(type, item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix);
     }
 
     /**
