@@ -148,17 +148,17 @@ public class GenerateDTOsTask {
             return switch((String) prop.get("format")) {
                 case "uri" -> new Type("URL").required(isRequired.test(propName));
                 case "email" -> new Type("String").required(isRequired.test(propName));
-                case "date-time" -> new Type("LocalDateTime").required(isRequired.test(propName));
-                case "date" -> new Type("LocalDate").required(isRequired.test(propName));
+                case "date-time" -> new Type("ZonedDateTime").required(isRequired.test(propName));
+                case "date" -> new Type("ZonedDate").required(isRequired.test(propName));
                 case "uuid" -> new Type("UUID").required(isRequired.test(propName));
                 default -> throw new RuntimeException("Format detected: " + prop.get("format"));
             };
         }
 
-        String[] localDateTimeFields = {"utcUpdatedAt", "utcExpiresAt", "utcRedeemedAt", "utcConfirmedAt"};
+        String[] zonedDateTimeFields = {"utcUpdatedAt", "utcExpiresAt", "utcRedeemedAt", "utcConfirmedAt"};
 
-        if (type.equals("string") && Arrays.asList(localDateTimeFields).contains(propName)) {
-            return new Type("LocalDateTime").required(isRequired.test(propName));
+        if (type.equals("string") && Arrays.asList(zonedDateTimeFields).contains(propName)) {
+            return new Type("ZonedDateTime").required(isRequired.test(propName));
         }
 
         return switch (type) {
@@ -347,8 +347,8 @@ public class GenerateDTOsTask {
                 package io.bokun.octo%s;
                 
                 import java.net.URL;
-                import java.time.LocalDate;
-                import java.time.LocalDateTime;
+                import java.time.ZonedDate;
+                import java.time.ZonedDateTime;
                 import java.util.ArrayList;
                 import java.util.UUID;
                 import javax.annotation.Nonnull;
