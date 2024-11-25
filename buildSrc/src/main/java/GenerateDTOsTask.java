@@ -155,7 +155,7 @@ public class GenerateDTOsTask {
             };
         }
 
-        String[] zonedDateTimeFields = {"utcUpdatedAt", "utcExpiresAt", "utcRedeemedAt", "utcConfirmedAt"};
+        String[] zonedDateTimeFields = {"utcUpdatedAt", "utcExpiresAt", "utcRedeemedAt", "utcConfirmedAt", "utcCutoffAt"};
 
         if (type.equals("string") && Arrays.asList(zonedDateTimeFields).contains(propName)) {
             return new Type("ZonedDateTime").required(isRequired.test(propName));

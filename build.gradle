@@ -121,29 +121,29 @@ AWSCredentials awsCredentials = DefaultAWSCredentialsProviderChain.getInstance()
 
 //build.dependsOn tasks.generateAndStripDeps
 
-if (awsCredentials != null) {
-    println("publish : " + awsCredentials.AWSAccessKeyId)
-    publishing {
-        println "Will publish to Bokun private S3 repository"
-        publications {
-            restV2(MavenPublication) {
-                from components.java
-            }
-        }
-        repositories {
-            maven {
-                if (project.version.endsWith('-SNAPSHOT')) {
-                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots  ???
-                } else {
-                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release  ???
-                }
-                credentials(AwsCredentials) {
-                    accessKey awsCredentials.AWSAccessKeyId
-                    secretKey awsCredentials.AWSSecretKey
-                }
-            }
-        }
-    }
-} else {
-    println "AWS Credentials not found."
-}
+//if (awsCredentials != null) {
+//    println("publish : " + awsCredentials.AWSAccessKeyId)
+//    publishing {
+//        println "Will publish to Bokun private S3 repository"
+//        publications {
+//            restV2(MavenPublication) {
+//                from components.java
+//            }
+//        }
+//        repositories {
+//            maven {
+//                if (project.version.endsWith('-SNAPSHOT')) {
+//                    url "s3://pmr.bokun.io/snapshots" // TODO change to : s3://public-pmr.bokun.io/snapshots  ???
+//                } else {
+//                    url "s3://pmr.bokun.io/release"  // TODO change to : s3://public-pmr.bokun.io/release  ???
+//                }
+//                credentials(AwsCredentials) {
+//                    accessKey awsCredentials.AWSAccessKeyId
+//                    secretKey awsCredentials.AWSSecretKey
+//                }
+//            }
+//        }
+//    }
+//} else {
+//    println "AWS Credentials not found."
+//}
