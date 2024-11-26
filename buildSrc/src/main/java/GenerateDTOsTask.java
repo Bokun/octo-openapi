@@ -310,10 +310,17 @@ public class GenerateDTOsTask {
         }
 
         String title = (String) item.get("title");
+        var options = (ArrayList<String>) item.get("enum");
+
+        if (type.equals("string") && itemName.equals("refund") && schemaName.equals("Cancellation")) {
+            title = "CancellationRefund";
+            options = new ArrayList<>(List.of("FULL", "PARTIAL", "NONE"));
+        }
+
         if (type.equals("string") && title != null) {
             itemName = title;
             type = "object";
-            registerEnum(itemName, (ArrayList<String>) item.get("enum"));
+            registerEnum(itemName, options);
         }
 
         return getType(type, item, itemName, schemaName, typeAsSingular, isRequired, pathPrefix);
