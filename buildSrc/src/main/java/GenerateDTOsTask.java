@@ -315,6 +315,12 @@ public class GenerateDTOsTask {
             itemName = "BookingRequestUnitItem";
         }
 
+        // Tickets and vouchers are the same things, same type, just different name in Octo depending on where it's used.
+        // Let's not be part of this bs and have them be one type
+        if (objectName.equals("Voucher")) {
+            itemName = "Ticket";
+        }
+
         if (type.equals("object")) {
             processObject(item, makeObjectName(itemName, typeAsSingular), pathPrefix);
         }
