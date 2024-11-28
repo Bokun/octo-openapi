@@ -144,6 +144,11 @@ public class GenerateDTOsTask {
             propName = schemaName + capitalize(propName);
         }
 
+        // Some UUID fields are not marked as UUID
+        if (type.equals("string") && propName.equals("uuid")) {
+            return new Type("UUID").required(isRequired.test(propName));
+        }
+
         if (type.equals("string") && prop.containsKey("format")) {
             return switch((String) prop.get("format")) {
                 case "uri" -> new Type("URL").required(isRequired.test(propName));
