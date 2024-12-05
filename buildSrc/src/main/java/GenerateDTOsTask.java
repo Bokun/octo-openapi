@@ -160,6 +160,10 @@ public class GenerateDTOsTask {
             };
         }
 
+        if (propName.equals("expirationMinutes")) {
+            return new Type("Integer").required(isRequired.test(propName));
+        }
+
         String[] zonedDateTimeFields = {
                 "utcCreatedAt",
                 "utcUpdatedAt",
