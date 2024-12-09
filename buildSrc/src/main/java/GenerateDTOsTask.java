@@ -374,7 +374,7 @@ public class GenerateDTOsTask {
                 annotation = "@SerializedName(\"default\") ";
             }
 
-            params.add(processAndGetType(prop, propName, name, false, isRequired, null) + " " + annotation + propName);
+            params.add(annotation + processAndGetType(prop, propName, name, false, isRequired, null) + " " + propName);
             javadocs.add(" * @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
         }
 
