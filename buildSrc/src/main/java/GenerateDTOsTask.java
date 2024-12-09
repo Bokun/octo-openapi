@@ -324,6 +324,10 @@ public class GenerateDTOsTask {
             itemName = "BookingRequestUnitItem";
         }
 
+        if (objectName.equals("Contact") && schemaName.equals("Supplier")) {
+            itemName = "SupplierContact";
+        }
+
         // Tickets and vouchers are the same things, same type, just different name in Octo depending on where it's used.
         // Let's not be part of this bs and have them be one type
         if (objectName.equals("Voucher")) {
@@ -370,6 +374,11 @@ public class GenerateDTOsTask {
 
             params.add(processAndGetType(prop, propName, name, false, isRequired, null) + " " + propName);
             javadocs.add(" * @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
+        }
+
+        if (name.equals("PostAvailability")) {
+            params.add("LocalDate localDate");
+            javadocs.add(" * @param localDate localDate - if set, it's the same as localDateStart and localDateEnd being set to the same value");
         }
 
         createJavaClass(item, name, javadocs, params, pathPrefix);
