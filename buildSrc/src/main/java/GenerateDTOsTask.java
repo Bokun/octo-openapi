@@ -367,12 +367,14 @@ public class GenerateDTOsTask {
 
         for (var propName : properties.keySet()) {
             var prop = (Map<String, Object>) properties.get(propName);
+            var annotation = "";
 
             if (propName.equals("default")) {
                 propName = propName + name;
+                annotation = "@SerializedName(\"default\") ";
             }
 
-            params.add(processAndGetType(prop, propName, name, false, isRequired, null) + " " + propName);
+            params.add(processAndGetType(prop, propName, name, false, isRequired, null) + " " + annotation + propName);
             javadocs.add(" * @param " + propName + " " + (prop.containsKey("description") && !prop.get("description").equals("") ? prop.get("description") : propName));
         }
 
@@ -405,6 +407,7 @@ public class GenerateDTOsTask {
                 import java.util.ArrayList;
                 import java.util.UUID;
                 import javax.annotation.Nonnull;
+                import com.google.gson.annotations.SerializedName;
                 %s
                 
                 /**
