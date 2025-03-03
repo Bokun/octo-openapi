@@ -164,6 +164,10 @@ public class GenerateDTOsTask {
             return new Type("Integer").required(isRequired.test(propName));
         }
 
+        if (propName.equals("availabilityId") && schemaName.equals("PostBookings")) {
+            return new Type("String").required(false).nullable(true);
+        }
+
         String[] zonedDateTimeFields = {
                 "utcCreatedAt",
                 "utcUpdatedAt",
